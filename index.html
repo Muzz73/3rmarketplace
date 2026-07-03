@@ -483,6 +483,15 @@
     .avail-rig{display:none}
   }
   @media(max-width:760px){
+    /* soften the green ambient on small screens so it matches desktop (fixed gradients over-fill narrow viewports) */
+    body{
+      background:
+         radial-gradient(700px 520px at 88% 0%, rgba(83,175,59,.10), transparent 62%),
+         radial-gradient(680px 620px at 0% 42%, rgba(60,138,43,.07), transparent 60%),
+         radial-gradient(760px 700px at 100% 88%, rgba(83,175,59,.08), transparent 64%),
+         var(--bg);
+      background-attachment:scroll;
+    }
     .hamburger{display:none}
     .nav-inner{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
     .nav-cta{order:2}

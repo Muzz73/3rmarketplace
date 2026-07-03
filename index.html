@@ -30,6 +30,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<!-- Netlify Identity: real invite-only login for the Tool Pool -->
+<script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
 <!-- Structured data: Organization -->
 <script type="application/ld+json">
@@ -1400,15 +1402,15 @@ function pageToolGate(){
   </section>`;
 }
 function loginModal(){
+  /* Real invite-only login via Netlify Identity */
+  if(window.netlifyIdentity){ netlifyIdentity.open('login'); return; }
+  /* Fallback when Identity isn't available (e.g. opened as a local file, or Identity not yet enabled in Netlify) */
   openModal(`
-    <div class="modal-head"><div><h3>Partner Login</h3><div class="msub">Log in to access the 3R Tool Pool.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
-    <form onsubmit="event.preventDefault();toolPoolAccess=true;closeModal();location.hash='#/tooling';router();toast('Welcome back','Tool Pool access granted.')">
-      <div class="fld"><label>Email <span class="req">*</span></label><input required type="email" placeholder="you@company.com"></div>
-      <div class="fld"><label>Password <span class="req">*</span></label><input required type="password" placeholder="••••••••"></div>
-      <button class="btn btn-primary btn-block" type="submit">${ic('shield')} Log in</button>
-      <p style="color:var(--muted-2);font-size:12.5px;margin-top:12px;text-align:center">Access is by invitation. Not a partner yet? <a href="#" onclick="event.preventDefault();closeModal();partnerModal()" style="color:var(--green)">Become a partner</a>.</p>
-    </form>`);
+    <div class="modal-head"><div><h3>Partner Login</h3><div class="msub">Access to the 3R Tool Pool is by invitation only.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
+    <p style="color:var(--muted);font-size:14.5px;line-height:1.6">Secure partner login is available on the live site at <b style="color:var(--text)">3rmarketplace.com</b>. Registered Tool Pool partners can sign in there with the email 3R invited them with.</p>
+    <p style="color:var(--muted-2);font-size:12.5px;margin-top:14px">Not a partner yet? <a href="#" onclick="event.preventDefault();closeModal();partnerModal()" style="color:var(--green)">Become a partner</a> and the 3R team will be in touch.</p>`);
 }
+function logoutTool(){ if(window.netlifyIdentity){ netlifyIdentity.logout(); } }
 function partnerModal(){
   openModal(`
     <div class="modal-head"><div><h3>Become a Tool Pool Partner</h3><div class="msub">Join the 3R Tool Pool network — tell us about your business and we'll be in touch.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
@@ -1442,6 +1444,7 @@ function pageTooling(){
     <div class="wrap">
       <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px">
         <div><span class="eyebrow">Available now</span><h2 class="title" style="margin-bottom:0">Tools for rent</h2></div>
+        <button class="btn btn-dark btn-sm" onclick="logoutTool()">${ic('shield')} Sign out</button>
       </div>
       <div class="chips" style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 22px">${cats.map(c=>`<button class="chip" style="padding:8px 14px;border-radius:30px;background:${toolingFilter===c?'var(--green-soft)':'var(--card)'};border:1px solid ${toolingFilter===c?'var(--green)':'var(--border)'};font-size:13.5px;font-weight:600;color:${toolingFilter===c?'var(--green)':'var(--muted)'}" onclick="setTool('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}</div>
       <div class="grid">${cards||'<div class="empty" style="grid-column:1/-1">No tools in this category yet.</div>'}</div>
@@ -1710,10 +1713,23 @@ function injectProductLD(){
   const s=document.createElement('script');s.type='application/ld+json';s.text=JSON.stringify(data);document.head.appendChild(s);
 }
 injectProductLD();
+/* ---------- Netlify Identity: invite-only Tool Pool access ---------- */
+function initIdentity(){
+  if(!window.netlifyIdentity) return;
+  netlifyIdentity.on('init', function(user){ toolPoolAccess=!!user; if(location.hash==='#/tooling') router(); });
+  netlifyIdentity.on('login', function(user){
+    toolPoolAccess=true; netlifyIdentity.close();
+    if(location.hash!=='#/tooling'){ location.hash='#/tooling'; } else { router(); }
+    toast('Welcome back', (user&&user.email? user.email : 'Tool Pool')+' — access granted.');
+  });
+  netlifyIdentity.on('logout', function(){ toolPoolAccess=false; router(); toast('Signed out','You have left the Tool Pool.'); });
+  netlifyIdentity.init();
+}
 window.addEventListener('hashchange',router);
 $('#hamburger').addEventListener('click',()=>$('#navLinks').classList.toggle('open'));
 $('#yr').textContent=new Date().getFullYear();
 initTawk();
+initIdentity();
 router();
 </script>
 </body>

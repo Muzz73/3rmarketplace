@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sitemap for 3R Oilfield Equipment.
+  NOTE: this single-page app uses hash routing (#/browse etc.), and search
+  engines treat URL fragments as the same page. The homepage URL below is the
+  canonical entry point. When server-side / path-based routing is added
+  (e.g. /browse, /tooling-pool), add those as separate <url> entries here.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://3rmarketplace.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

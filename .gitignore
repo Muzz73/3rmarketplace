@@ -1,0 +1,9 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+
+# Local-only helper files (not part of the live site)
+mobile-preview.html
+hero-banner-full.png

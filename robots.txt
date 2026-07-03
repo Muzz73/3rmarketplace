@@ -1,0 +1,46 @@
+# robots.txt — 3R Oilfield Equipment
+# Allow all standard search engines to crawl everything.
+User-agent: *
+Allow: /
+# Internal helper files — not part of the public site
+Disallow: /mobile-preview.html
+Disallow: /hero-banner-full.png
+
+# --- AI / LLM crawlers explicitly welcomed (for AI search & answer engines) ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://3rmarketplace.com/sitemap.xml

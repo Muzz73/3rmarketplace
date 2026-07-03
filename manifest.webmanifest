@@ -1,0 +1,16 @@
+{
+  "name": "3R Oilfield Equipment Marketplace",
+  "short_name": "3R Marketplace",
+  "description": "Circular economy marketplace for surplus oil & gas equipment — buy, sell and rent pre-owned, refurbished and surplus oilfield equipment.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0d0c",
+  "theme_color": "#53AF3B",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

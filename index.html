@@ -9,6 +9,15 @@
 <meta name="author" content="3R Oilfield Equipment" />
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 <meta name="theme-color" content="#53AF3B" />
+
+<!-- Progressive Web App: installable on mobile, iPad & desktop -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="3R Marketplace" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="application-name" content="3R Marketplace" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2353AF3B'/><text x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='32' font-weight='900' text-anchor='middle' fill='%23062309'>3R</text></svg>" />
 <link rel="canonical" href="https://3rmarketplace.com/" />
 
@@ -1823,6 +1832,8 @@ $('#yr').textContent=new Date().getFullYear();
 initTawk();
 router();
 initAuth();
+/* Register service worker so the site is installable as an app (PWA) */
+if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); }
 </script>
 </body>
 </html>

@@ -30,8 +30,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-<!-- Netlify Identity: real invite-only login for the Tool Pool -->
-<script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<!-- Tool Pool auth talks to Netlify Identity's API directly (see initAuth) — no external widget -->
+
 
 <!-- Structured data: Organization -->
 <script type="application/ld+json">
@@ -1402,15 +1402,32 @@ function pageToolGate(){
   </section>`;
 }
 function loginModal(){
-  /* Real invite-only login via Netlify Identity */
-  if(window.netlifyIdentity){ netlifyIdentity.open('login'); return; }
-  /* Fallback when Identity isn't available (e.g. opened as a local file, or Identity not yet enabled in Netlify) */
+  /* Invite-only login — talks to the Netlify Identity API directly */
   openModal(`
-    <div class="modal-head"><div><h3>Partner Login</h3><div class="msub">Access to the 3R Tool Pool is by invitation only.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
-    <p style="color:var(--muted);font-size:14.5px;line-height:1.6">Secure partner login is available on the live site at <b style="color:var(--text)">3rmarketplace.com</b>. Registered Tool Pool partners can sign in there with the email 3R invited them with.</p>
+    <div class="modal-head"><div><h3>Tool Pool Partner Login</h3><div class="msub">Access to the 3R Tool Pool is by invitation only.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
+    <form onsubmit="tpDoLogin(event)">
+      <div class="fld"><label>Email <span class="req">*</span></label><input id="tpEmail" required type="email" placeholder="you@company.com" autocomplete="username"></div>
+      <div class="fld"><label>Password <span class="req">*</span></label><input id="tpPass" required type="password" placeholder="Your password" autocomplete="current-password"></div>
+      <div id="tpErr" style="display:none;color:#ff9a9a;font-size:13px;margin:2px 0 12px;line-height:1.5"></div>
+      <button class="btn btn-primary btn-block" type="submit" id="tpBtn">${ic('shield')} Sign in</button>
+    </form>
     <p style="color:var(--muted-2);font-size:12.5px;margin-top:14px">Not a partner yet? <a href="#" onclick="event.preventDefault();closeModal();partnerModal()" style="color:var(--green)">Become a partner</a> and the 3R team will be in touch.</p>`);
 }
-function logoutTool(){ if(window.netlifyIdentity){ netlifyIdentity.logout(); } }
+async function tpDoLogin(e){
+  e.preventDefault();
+  const email=$('#tpEmail').value.trim(), pass=$('#tpPass').value;
+  const btn=$('#tpBtn'), err=$('#tpErr');
+  err.style.display='none'; btn.disabled=true; btn.innerHTML='Signing in…';
+  try{
+    await tpLogin(email, pass);
+    toast('Welcome back', email+' — access granted.');
+  }catch(ex){
+    err.textContent = /invalid|grant|credential|400|401/i.test(String(ex.message)) ? 'Email or password is incorrect.' : ('Sign-in failed: '+ex.message);
+    err.style.display='block';
+    btn.disabled=false; btn.innerHTML=ic('shield')+' Sign in';
+  }
+}
+function logoutTool(){ tpClearSession(); toolPoolAccess=false; if(location.hash==='#/tooling') router(); toast('Signed out','You have left the Tool Pool.'); }
 function partnerModal(){
   openModal(`
     <div class="modal-head"><div><h3>Become a Tool Pool Partner</h3><div class="msub">Join the 3R Tool Pool network — tell us about your business and we'll be in touch.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
@@ -1713,30 +1730,99 @@ function injectProductLD(){
   const s=document.createElement('script');s.type='application/ld+json';s.text=JSON.stringify(data);document.head.appendChild(s);
 }
 injectProductLD();
-/* ---------- Netlify Identity: invite-only Tool Pool access ---------- */
-function hasIdentityToken(){ return /(invite_token|recovery_token|confirmation_token|email_change_token)=/.test(location.hash||''); }
-function initIdentity(){
-  if(!window.netlifyIdentity) return;
-  netlifyIdentity.on('init', function(user){
-    toolPoolAccess=!!user;
-    /* Arriving from an invite / password-reset email — open the widget to complete it */
-    if(hasIdentityToken()){ try{ netlifyIdentity.open(); }catch(e){} }
-    else if(location.hash==='#/tooling'){ router(); }
-  });
-  netlifyIdentity.on('login', function(user){
-    toolPoolAccess=true; netlifyIdentity.close();
-    location.hash='#/tooling'; router();
-    toast('Welcome back', (user&&user.email? user.email : 'Tool Pool')+' — access granted.');
-  });
-  netlifyIdentity.on('logout', function(){ toolPoolAccess=false; router(); toast('Signed out','You have left the Tool Pool.'); });
-  netlifyIdentity.init();
+/* ---------- Tool Pool auth: invite-only, via Netlify Identity (GoTrue) API ---------- */
+const TP_API='/.netlify/identity';
+const TP_KEY='3r_tp_session';
+function tpSaveSession(d){ try{ localStorage.setItem(TP_KEY, JSON.stringify(d)); }catch(e){} }
+function tpGetSession(){ try{ return JSON.parse(localStorage.getItem(TP_KEY)||'null'); }catch(e){ return null; } }
+function tpClearSession(){ try{ localStorage.removeItem(TP_KEY); }catch(e){} }
+async function tpApi(path, opts){
+  const r = await fetch(TP_API+path, opts||{});
+  const txt = await r.text();
+  let data=null; try{ data = txt? JSON.parse(txt): null; }catch(e){ data={raw:txt}; }
+  if(!r.ok){ throw new Error((data&&(data.msg||data.error_description||data.error))||('Error '+r.status)); }
+  return data;
+}
+async function tpLogin(email, password){
+  const body=new URLSearchParams({grant_type:'password', username:email, password:password});
+  const tok=await tpApi('/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body.toString()});
+  tpSaveSession(tok); await tpGrantAccess();
+}
+async function tpAcceptInvite(token, password){
+  const tok=await tpApi('/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:token, password:password, type:'signup'})});
+  tpSaveSession(tok); await tpGrantAccess();
+}
+async function tpRecover(token, password){
+  const tok=await tpApi('/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:token, type:'recovery'})});
+  tpSaveSession(tok);
+  await tpApi('/user', {method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok.access_token}, body:JSON.stringify({password:password})});
+  await tpGrantAccess();
+}
+async function tpCurrentUser(){
+  const s=tpGetSession(); if(!s||!s.access_token) return null;
+  try{ return await tpApi('/user', {headers:{'Authorization':'Bearer '+s.access_token}}); }
+  catch(e){
+    if(s.refresh_token){
+      try{
+        const body=new URLSearchParams({grant_type:'refresh_token', refresh_token:s.refresh_token});
+        const tok=await tpApi('/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body.toString()});
+        tpSaveSession(tok);
+        return await tpApi('/user', {headers:{'Authorization':'Bearer '+tok.access_token}});
+      }catch(e2){ tpClearSession(); return null; }
+    }
+    tpClearSession(); return null;
+  }
+}
+async function tpGrantAccess(){
+  toolPoolAccess=true; closeModal();
+  if(location.hash!=='#/tooling'){ location.hash='#/tooling'; } else { router(); }
+}
+let tpPending=null;
+function tpSetPasswordModal(mode, token){
+  tpPending={mode:mode, token:token};
+  const invite = mode!=='recovery';
+  openModal(`
+    <div class="modal-head"><div><h3>${invite?'Welcome to the 3R Tool Pool':'Reset your password'}</h3><div class="msub">${invite?'Set a password to activate your partner access.':'Choose a new password to continue.'}</div></div><button onclick="closeModal()">${ic('close')}</button></div>
+    <form onsubmit="tpDoSetPassword(event)">
+      <div class="fld"><label>New password <span class="req">*</span></label><input id="tpNewPass" required type="password" minlength="6" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <div class="fld"><label>Confirm password <span class="req">*</span></label><input id="tpNewPass2" required type="password" minlength="6" placeholder="Re-enter password" autocomplete="new-password"></div>
+      <div id="tpErr" style="display:none;color:#ff9a9a;font-size:13px;margin:2px 0 12px;line-height:1.5"></div>
+      <button class="btn btn-primary btn-block" type="submit" id="tpBtn">${ic('shield')} Activate access</button>
+    </form>`);
+}
+async function tpDoSetPassword(e){
+  e.preventDefault();
+  if(!tpPending) return;
+  const mode=tpPending.mode, token=tpPending.token;
+  const p1=$('#tpNewPass').value, p2=$('#tpNewPass2').value, btn=$('#tpBtn'), err=$('#tpErr');
+  err.style.display='none';
+  if(p1!==p2){ err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.innerHTML='Activating…';
+  try{
+    if(mode==='recovery'){ await tpRecover(token, p1); } else { await tpAcceptInvite(token, p1); }
+    try{ history.replaceState(null,'',location.pathname+location.search+'#/tooling'); }catch(_){}
+    toast('Access granted','Welcome to the 3R Tool Pool.');
+  }catch(ex){
+    err.textContent='Could not set password: '+ex.message+'. Your invite link may have expired — ask 3R to resend it.';
+    err.style.display='block';
+    btn.disabled=false; btn.innerHTML=ic('shield')+' Activate access';
+  }
+}
+async function initAuth(){
+  const h=location.hash||'';
+  const inv=h.match(/invite_token=([^&]+)/);
+  const rec=h.match(/recovery_token=([^&]+)/);
+  if(inv){ tpSetPasswordModal('invite', decodeURIComponent(inv[1])); return; }
+  if(rec){ tpSetPasswordModal('recovery', decodeURIComponent(rec[1])); return; }
+  const u=await tpCurrentUser();
+  if(u){ toolPoolAccess=true; if(location.hash==='#/tooling') router(); }
 }
 window.addEventListener('hashchange',router);
 $('#hamburger').addEventListener('click',()=>$('#navLinks').classList.toggle('open'));
 $('#yr').textContent=new Date().getFullYear();
 initTawk();
-initIdentity();
 router();
+initAuth();
 </script>
 </body>
 </html>

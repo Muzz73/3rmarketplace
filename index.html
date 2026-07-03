@@ -1714,12 +1714,18 @@ function injectProductLD(){
 }
 injectProductLD();
 /* ---------- Netlify Identity: invite-only Tool Pool access ---------- */
+function hasIdentityToken(){ return /(invite_token|recovery_token|confirmation_token|email_change_token)=/.test(location.hash||''); }
 function initIdentity(){
   if(!window.netlifyIdentity) return;
-  netlifyIdentity.on('init', function(user){ toolPoolAccess=!!user; if(location.hash==='#/tooling') router(); });
+  netlifyIdentity.on('init', function(user){
+    toolPoolAccess=!!user;
+    /* Arriving from an invite / password-reset email — open the widget to complete it */
+    if(hasIdentityToken()){ try{ netlifyIdentity.open(); }catch(e){} }
+    else if(location.hash==='#/tooling'){ router(); }
+  });
   netlifyIdentity.on('login', function(user){
     toolPoolAccess=true; netlifyIdentity.close();
-    if(location.hash!=='#/tooling'){ location.hash='#/tooling'; } else { router(); }
+    location.hash='#/tooling'; router();
     toast('Welcome back', (user&&user.email? user.email : 'Tool Pool')+' — access granted.');
   });
   netlifyIdentity.on('logout', function(){ toolPoolAccess=false; router(); toast('Signed out','You have left the Tool Pool.'); });

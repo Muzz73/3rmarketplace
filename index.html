@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>3R Oilfield Equipment | Circular Economy Marketplace for Surplus Oil &amp; Gas Equipment</title>
-<meta name="description" content="3R Oilfield Equipment is a global circular-economy marketplace to buy, sell and rent surplus oilfield equipment — subsea, drilling, wells &amp; completions, platform and marine. Reduce cost, lead time and waste." />
+<meta name="description" content="Buy, sell and rent surplus oilfield equipment on 3R — a global circular-economy marketplace for oil &amp; gas: subsea, drilling, wells, platform and marine." />
 <meta name="keywords" content="surplus oilfield equipment, used oil and gas equipment, oilfield equipment marketplace, buy sell oilfield equipment, refurbished oilfield equipment, subsea equipment, drilling equipment, wellheads, BOP, OCTG, oilfield tooling rental, circular economy oil and gas, decommissioning equipment" />
 <meta name="author" content="3R Oilfield Equipment" />
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -340,6 +340,8 @@
   .card .ph{height:158px;position:relative;display:flex;align-items:center;justify-content:center}
   .card .ph svg.icon{width:54px;height:54px;color:rgba(255,255,255,.92);opacity:.95}
   .card .ph .cat-label{position:absolute;left:12px;bottom:12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.32);padding:5px 10px;border-radius:30px;backdrop-filter:blur(4px)}
+  .card .ph{position:relative}
+  .card .ph .new-badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#06230b;background:var(--green);padding:4px 9px;border-radius:30px;box-shadow:0 4px 12px rgba(83,175,59,.4)}
   .verified{position:absolute;right:12px;top:12px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#06230b;background:var(--green);padding:5px 9px;border-radius:30px}
   .verified svg{width:13px;height:13px}
   .card .body{padding:17px 17px 18px;display:flex;flex-direction:column;flex:1}
@@ -637,6 +639,7 @@
         <a href="#/about">Sustainability</a>
         <a href="#/contact">Contact</a>
         <a href="#/privacy">Privacy Policy</a>
+        <a href="https://www.3roilfieldequipment.com/" target="_blank" rel="noopener">3R Group Website ↗</a>
       </div>
       <div>
         <h5>For You</h5>
@@ -811,6 +814,8 @@ const $=s=>document.querySelector(s);
 const fmt=n=>'$'+n.toLocaleString('en-US');
 const view=$('#view');
 let toolingFilter='All';
+let POOL_TOOLS=null;   /* Tool Pool listings from the sheet: null=not loaded yet, []=loaded */
+let poolLoading=false;
 let toolPoolAccess=false;
 let browseState={q:'',cat:'All',cond:'All'};
 
@@ -1439,7 +1444,7 @@ async function tpDoLogin(e){
     btn.disabled=false; btn.innerHTML=ic('shield')+' Sign in';
   }
 }
-function logoutTool(){ tpClearSession(); toolPoolAccess=false; if(location.hash==='#/tooling') router(); toast('Signed out','You have left the Tool Pool.'); }
+function logoutTool(){ tpClearSession(); toolPoolAccess=false; POOL_TOOLS=null; if(location.hash==='#/tooling') router(); toast('Signed out','You have left the Tool Pool.'); }
 function partnerModal(){
   openModal(`
     <div class="modal-head"><div><h3>Become a Tool Pool Partner</h3><div class="msub">Join the 3R Tool Pool network — tell us about your business and we'll be in touch.</div></div><button onclick="closeModal()">${ic('close')}</button></div>
@@ -1457,17 +1462,57 @@ function partnerModal(){
       <button class="btn btn-primary btn-block" type="submit">${ic('handshake')} Submit partner enquiry</button>
     </form>`);
 }
+/* ---------- Tool Pool data (members-only, loaded from the Google Sheet) ---------- */
+function poolEsc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+function poolAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function poolJs(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function poolIsNew(d){ if(!d) return false; var t=Date.parse(d); if(isNaN(t)) return false; var age=Date.now()-t; return age > -2*864e5 && age < 30*864e5; }
+function poolSortNewest(list){ return list.slice().sort(function(a,b){ return (Date.parse(b.date)||0)-(Date.parse(a.date)||0); }); }
+function poolCard(t){
+  var m=catMeta(t.cat);
+  var badge = poolIsNew(t.date) ? '<span class="new-badge">New</span>' : '';
+  var head = t.photo
+    ? '<div class="ph" style="height:140px;padding:0;overflow:hidden"><img src="'+poolAttr(t.photo)+'" alt="'+poolAttr(t.name)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.style.background=\''+m.g+'\';this.remove()">'+badge+'<span class="cat-label">'+poolEsc(t.cat)+'</span></div>'
+    : '<div class="ph" style="background:'+m.g+';height:140px">'+ic(m.icon,'icon')+badge+'<span class="cat-label">'+poolEsc(t.cat)+'</span></div>';
+  var price = t.rate ? (fmt(Number(t.rate))+'<small>per day</small>') : '<span style="font-size:15px">POA</span><small>enquire for price</small>';
+  var loc = t.loc ? '<div class="meta-row">'+ic('pin')+'<span>'+poolEsc(t.loc)+'</span></div>' : '';
+  var cond = t.cond ? '<span style="display:inline-block;font-size:11.5px;font-weight:700;color:var(--green);background:var(--green-soft);padding:3px 10px;border-radius:20px;margin-bottom:11px">'+poolEsc(t.cond)+'</span>' : '';
+  return '<div class="card">'+head+
+    '<div class="body"><h3 style="min-height:auto;margin-bottom:'+(cond?'8px':'')+'">'+poolEsc(t.name)+'</h3>'+cond+
+      '<p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">'+poolEsc(t.desc)+'</p>'+loc+
+      '<div class="foot"><div class="price">'+price+'</div>'+
+      '<button class="btn btn-dark btn-sm" onclick="enquireModal(\''+poolJs(t.name)+'\')">Enquire '+ic('arrow')+'</button></div>'+
+    '</div></div>';
+}
+function poolGridInner(){
+  if(POOL_TOOLS===null){ return '<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">Loading listings…</div>'; }
+  var cats=['All'].concat(Array.from(new Set(POOL_TOOLS.map(function(t){return t.cat;}).filter(Boolean))));
+  var list=poolSortNewest(POOL_TOOLS).filter(function(t){ return toolingFilter==='All'||t.cat===toolingFilter; });
+  var chips='<div class="chips" style="display:flex;gap:9px;flex-wrap:wrap;margin:0 0 22px">'+cats.map(function(c){
+    var on=toolingFilter===c;
+    return '<button class="chip" style="padding:8px 14px;border-radius:30px;background:'+(on?'var(--green-soft)':'var(--card)')+';border:1px solid '+(on?'var(--green)':'var(--border)')+';font-size:13.5px;font-weight:600;color:'+(on?'var(--green)':'var(--muted)')+'" onclick="setTool(\''+poolJs(c)+'\')">'+poolEsc(c)+'</button>';
+  }).join('')+'</div>';
+  var cards=list.map(poolCard).join('');
+  var empty = POOL_TOOLS.length ? 'No tools in this category yet.' : 'No equipment listed yet — check back soon.';
+  var grid='<div class="grid">'+(cards||'<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">'+empty+'</div>')+'</div>';
+  return chips+grid;
+}
+function refreshPoolInner(){ var el=document.getElementById('pool-inner'); if(el) el.innerHTML=poolGridInner(); }
+async function loadPoolTools(force){
+  if(poolLoading) return;
+  if(POOL_TOOLS!==null && !force) return;
+  poolLoading=true;
+  try{
+    var s=tpGetSession();
+    var r=await fetch('/.netlify/functions/tools',{ headers:(s&&s.access_token)?{'Authorization':'Bearer '+s.access_token}:{}, cache:'no-store' });
+    if(!r.ok) throw new Error('load '+r.status);
+    var data=await r.json();
+    POOL_TOOLS=Array.isArray(data.tools)?data.tools:[];
+  }catch(e){ POOL_TOOLS=[]; }
+  poolLoading=false;
+  if(location.hash==='#/tooling') refreshPoolInner();
+}
 function pageTooling(){
-  const cats=['All',...new Set(TOOLS.map(t=>t.cat))];
-  const filtered=TOOLS.filter(t=>toolingFilter==='All'||t.cat===toolingFilter);
-  const cards=filtered.map(t=>{const m=catMeta(t.cat);return `<div class="card">
-    <div class="ph" style="background:${m.g};height:140px">${ic(m.icon,'icon')}<span class="cat-label">${t.cat}</span></div>
-    <div class="body"><h3 style="min-height:auto">${t.name}</h3>
-      <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">${t.desc}</p>
-      <div class="meta-row">${ic('pin')}<span>${t.loc}</span></div>
-      <div class="foot"><div class="price">${fmt(t.rate)}<small>per day</small></div>
-      <button class="btn btn-dark btn-sm" onclick="rentModal('${t.name.replace(/'/g,"\\'")}')">Reserve ${ic('arrow')}</button></div>
-    </div></div>`;}).join('');
   const poolGrid = `
   <section class="section tight" id="pool-grid" style="background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
     <div class="wrap">
@@ -1475,10 +1520,10 @@ function pageTooling(){
         <div><span class="eyebrow">Available now</span><h2 class="title" style="margin-bottom:0">Tools for rent</h2></div>
         <button class="btn btn-dark btn-sm" onclick="logoutTool()">${ic('shield')} Sign out</button>
       </div>
-      <div class="chips" style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 22px">${cats.map(c=>`<button class="chip" style="padding:8px 14px;border-radius:30px;background:${toolingFilter===c?'var(--green-soft)':'var(--card)'};border:1px solid ${toolingFilter===c?'var(--green)':'var(--border)'};font-size:13.5px;font-weight:600;color:${toolingFilter===c?'var(--green)':'var(--muted)'}" onclick="setTool('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}</div>
-      <div class="grid">${cards||'<div class="empty" style="grid-column:1/-1">No tools in this category yet.</div>'}</div>
+      <div id="pool-inner" style="margin-top:20px">${poolGridInner()}</div>
     </div>
   </section>`;
+  if(toolPoolAccess && POOL_TOOLS===null){ setTimeout(loadPoolTools,0); }
   const poolLocked = `
   <section class="section tight" style="background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
     <div class="wrap" style="max-width:640px;text-align:center;margin:0 auto">
@@ -1555,16 +1600,18 @@ function pageTooling(){
     </div></div>
   </section>`;
 }
-function setTool(c){toolingFilter=c;view.innerHTML=pageTooling();const el=document.getElementById('pool-grid');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
-function rentModal(name){
-  openModal(`
-    <div class="modal-head"><div><h3>Reserve tool</h3><div class="msub">${name}</div></div><button onclick="closeModal()">${ic('close')}</button></div>
-    <form onsubmit="event.preventDefault();closeModal();toast('Reservation requested','The 3R Tool Pool team will confirm availability (demo).')">
-      <div class="fld-2"><div class="fld"><label>Job start <span class="req">*</span></label><input required type="date"></div><div class="fld"><label>Duration (days)</label><input type="number" placeholder="7"></div></div>
-      <div class="fld"><label>Delivery location <span class="req">*</span></label><input required placeholder="Rig / yard / port"></div>
-      <div class="fld"><label>Work email <span class="req">*</span></label><input required type="email" placeholder="you@company.com"></div>
-      <button class="btn btn-primary btn-block" type="submit">${ic('check')} Request reservation</button>
-    </form>`);
+function setTool(c){ toolingFilter=c; refreshPoolInner(); }
+function enquireModal(name){
+  openModal(
+    '<div class="modal-head"><div><h3>Enquire about this item</h3><div class="msub">'+poolEsc(name)+'</div></div><button onclick="closeModal()">'+ic('close')+'</button></div>'+
+    '<form onsubmit="emailRequest(event,\'Tool Pool Enquiry\')">'+
+      '<div class="fld"><label>Equipment</label><input readonly value="'+poolAttr(name)+'"></div>'+
+      '<div class="fld-2"><div class="fld"><label>Preferred start</label><input type="date"></div><div class="fld"><label>Duration (days)</label><input type="number" placeholder="7"></div></div>'+
+      '<div class="fld"><label>Delivery location</label><input placeholder="Rig / yard / port"></div>'+
+      '<div class="fld"><label>Work email <span class="req">*</span></label><input required type="email" placeholder="you@company.com"></div>'+
+      '<div class="fld"><label>Message</label><textarea placeholder="Anything else the 3R team should know…"></textarea></div>'+
+      '<button class="btn btn-primary btn-block" type="submit">'+ic('check')+' Send enquiry</button>'+
+    '</form>');
 }
 
 /* ---------- About ---------- */
@@ -1786,7 +1833,7 @@ async function tpCurrentUser(){
   }
 }
 async function tpGrantAccess(){
-  toolPoolAccess=true; closeModal();
+  toolPoolAccess=true; POOL_TOOLS=null; closeModal();
   if(location.hash!=='#/tooling'){ location.hash='#/tooling'; } else { router(); }
 }
 let tpPending=null;
@@ -1863,6 +1910,8 @@ function initInstallHint(){
   if(ib){ ib.addEventListener('click', function(){ if(installPromptEvt){ installPromptEvt.prompt(); installPromptEvt.userChoice.finally(function(){ installPromptEvt=null; dismiss(); }); } else { dismiss(); } }); }
 }
 
+/* Keep the browser tab title stable — the chat widget tries to change it to "N new message" */
+(function(){var C=document.title;try{var t=document.querySelector('title');if(t){new MutationObserver(function(){if(/new message/i.test(document.title)){document.title=C;}}).observe(t,{childList:true});}}catch(e){}})();
 initTawk();
 router();
 initAuth();

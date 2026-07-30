@@ -7,3 +7,16 @@ desktop.ini
 # Local-only helper files (not part of the live site)
 mobile-preview.html
 hero-banner-full.png
+
+# Master image originals — 400MB+ of full-size PNGs. Keep these locally only.
+# The web-optimised copies the site actually uses live in /equipment-images/.
+Equipment Images/
+
+# Working files and previews (not part of the live site)
+*.xlsx
+browse-live-preview.html
+browse-preview.html
+generic-images-preview.html
+image-names.html
+item-previews.html
+placeholder-images/

@@ -1110,12 +1110,28 @@ async function loadEquip(force){
   else if(h.indexOf('#/item/')===0) view.innerHTML=pageItem(decodeURIComponent(h.split('/')[2]||''));
 }
 function eqFind(item){ return (EQ_LIVE||[]).find(function(e){return e.item===item;}); }
-function eqIsGeneric(e){ return e.generic===true || (!!e.img && !/^https?:\/\//i.test(e.img)); }
+/* Illustrative caption rule: external URL = real photo; a file named
+   "3R-<number> …" = a real photo of that item; anything else = shared 3R image. */
+function eqIsGeneric(e){
+  if(typeof e.generic==='boolean') return e.generic;
+  if(!e.img || /^https?:\/\//i.test(e.img)) return false;
+  const f=decodeURIComponent(String(e.img).split('/').pop()||'');
+  return !/^3R[-\s]?\d/i.test(f.trim());
+}
 function eqImgNote(){ return '<div class="eq-imgnote">'+ic('info')+'Illustrative 3R image — not the actual item</div>'; }
 
+/* If a photo can't load (e.g. a private/renamed external URL), fall back to the
+   category icon rather than leaving an empty tile. */
+function eqImgFail(el,cat){
+  try{
+    const p=el.parentNode, m=catMeta(cat);
+    if(p) p.style.background=m.g;
+    el.outerHTML=ic(m.icon,'icon');
+  }catch(err){}
+}
 function eqCard(e){
   const pic = e.img
-    ? '<img src="'+poolAttr(e.img)+'" alt="'+poolAttr(e.name)+'" loading="lazy" class="eq-img">'
+    ? '<img src="'+poolAttr(e.img)+'" alt="'+poolAttr(e.name)+'" loading="lazy" class="eq-img" onerror="eqImgFail(this,\''+poolJs(e.cat)+'\')">'
     : ic(catMeta(e.cat).icon,'icon');
   const oem = (e.oem && e.oem.toUpperCase()!=='TBC')
     ? '<div class="eq-mfr">'+ic('build')+'<b>'+poolEsc(e.oem)+'</b></div>' : '';
@@ -1233,7 +1249,7 @@ function pageItem(item){
   if(!e) return '<div class="wrap" style="padding:80px 0"><div class="empty">Listing not found. <a href="#/browse-new" style="color:var(--green)">Back to equipment</a></div></div>';
   const m=catMeta(e.cat);
   const hero = e.img
-    ? '<img src="'+poolAttr(e.img)+'" alt="'+poolAttr(e.name)+'" class="eq-hero-img">'
+    ? '<img src="'+poolAttr(e.img)+'" alt="'+poolAttr(e.name)+'" class="eq-hero-img" onerror="eqImgFail(this,\''+poolJs(e.cat)+'\')">'
     : ic(m.icon,'icon');
   const meta=[];
   meta.push('<span style="display:inline-flex;gap:6px;align-items:center">'+ic('tag')+poolEsc(e.cat)+(e.sub?' · '+poolEsc(e.sub):'')+'</span>');

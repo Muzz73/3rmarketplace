@@ -181,13 +181,23 @@ function buildRows(headerResponse, rowsResponse) {
 }
 
 /* A real photo URL passes through; a picked filename becomes a site path.
-   `generic` tells the front end to caption the image as illustrative — a real
-   photograph of the actual item must never carry that note. */
+
+   `generic` tells the front end to caption the image as illustrative. A real
+   photograph of the actual item must NEVER carry that note, so the rule is:
+
+     • an external URL                     -> real photo
+     • a filename starting "3R-<number>"   -> real photo of that item
+       (e.g. "3R-356 Horizontal XMT.jpg")
+     • any other filename                  -> one of the shared 3R stock images
+*/
+function isItemPhoto(name) {
+  return /^3R[-\s]?\d/i.test(String(name).trim());
+}
 function normaliseImage(o) {
-  const v = o.img || '';
+  const v = (o.img || '').trim();
   if (!v) { o.img = ''; o.generic = false; return o; }
   if (/^https?:\/\//i.test(v)) { o.img = v; o.generic = false; return o; }
   o.img = IMG_BASE + encodeURIComponent(v);
-  o.generic = true;
+  o.generic = !isItemPhoto(v);
   return o;
 }

@@ -1182,8 +1182,16 @@ function eqDetails(d){
 function eqGridInner(){
   if(EQ_LIVE===null) return '<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">Loading equipment…</div>';
   if(!EQ_LIVE.length) return '<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">No equipment available right now.</div>';
-  const cats=['All','Subsea','Marine','Platform','Drilling','Wells/Completions','Capital Equipment'];
-  const counts={}; EQ_LIVE.forEach(function(e){counts[e.cat]=(counts[e.cat]||0)+1;});
+  /* Chips are built from the data, so renaming a category in the sheet — or adding
+     a new one — can never leave items unfilterable. Known categories keep this
+     running order; anything new is appended alphabetically. */
+  /* "Wells/Completions" was renamed to "Wells" (3 Aug 2026); the old name is kept
+     in the order list so any row still carrying it also gets a chip in the right place. */
+  const ORDER=['Subsea','Marine','Platform','Drilling','Wells','Wells/Completions','Capital Equipment'];
+  const counts={}; EQ_LIVE.forEach(function(e){ if(e.cat) counts[e.cat]=(counts[e.cat]||0)+1; });
+  const known=ORDER.filter(function(c){return counts[c];});
+  const extra=Object.keys(counts).filter(function(c){return ORDER.indexOf(c)<0;}).sort();
+  const cats=['All'].concat(known, extra);
   const chips='<div class="eq-chips">'+cats.filter(function(c){return c==='All'||counts[c];}).map(function(c){
     const on=eqState.cat===c, n=c==='All'?EQ_LIVE.length:counts[c];
     return '<button class="chip'+(on?' on':'')+'" onclick="eqSetCat(\''+poolJs(c)+'\')">'+poolEsc(c)+' <span>'+n+'</span></button>';

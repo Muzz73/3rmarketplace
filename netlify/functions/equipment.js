@@ -80,10 +80,15 @@ exports.handler = async (event) => {
 
   try {
     const token = await getToken(cfg);
+    /* Table is addressed as /workbook/tables/{name} — do NOT wrap the name in
+       quotes here; quotes belong only to the tables('name') bracket form, and
+       encoding them makes Graph look for a table literally called "'Equipment'"
+       (404). Drive and item ids are used as-is: they already contain only
+       URL-safe characters (b!… ids include "!", which Graph accepts). */
     const base =
-      'https://graph.microsoft.com/v1.0/drives/' + encodeURIComponent(cfg.drive) +
-      '/items/' + encodeURIComponent(cfg.item) + '/workbook/tables/' +
-      encodeURIComponent("'" + TABLE + "'");
+      'https://graph.microsoft.com/v1.0/drives/' + cfg.drive +
+      '/items/' + cfg.item +
+      '/workbook/tables/' + encodeURIComponent(TABLE);
 
     const [head, rows] = await Promise.all([
       graph(base + '/headerRowRange?$select=values', token),
@@ -139,7 +144,17 @@ async function getToken(cfg) {
 
 async function graph(url, token) {
   const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-  if (!res.ok) throw new Error('graph ' + res.status + ' ' + url.split('/workbook')[1]);
+  if (!res.ok) {
+    /* Include Graph's own message — it names the actual problem (unknown table,
+       item not found, forbidden) instead of leaving us to guess from a status. */
+    let detail = '';
+    try {
+      const body = await res.json();
+      detail = (body && body.error && (body.error.message || body.error.code)) || '';
+    } catch (e) {}
+    throw new Error('graph ' + res.status + ' on ' + url.split('/workbook')[1] +
+                    (detail ? ' — ' + detail : ''));
+  }
   return res.json();
 }
 

@@ -18,12 +18,19 @@ equipment-sharing platform for renting and leasing under-used tools between jobs
 - Recycle: identify equipment, parts or materials that can be recycled to minimise waste.
 
 ## Browse by category
+Live listings at https://3rmarketplace.com/#/browse — no sign-in required.
+Each item has its own page with full specification, condition, quantity,
+original manufacturer and documentation status. Categories:
 - Subsea
 - Capital Equipment
 - Drilling
-- Wells / Completions
+- Wells
 - Platform
 - Marine
+
+Prices are shown where set; most items are POA (price on application) and are
+quoted on enquiry. Listings come directly from 3R's own equipment register and
+are maintained by 3R, not a third party.
 
 ## Process
 List → Match → Verify (3R inspection & certification) → Transact → Deliver.

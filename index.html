@@ -1093,8 +1093,10 @@ function pageHome(){
   `;
 }
 
-/* ---------- Browse: live Power BI equipment list (publish-to-web, no login) ---------- */
-function pageBrowse(){
+/* ---------- Browse (RETIRED 4 Aug 2026): the old Power BI embed ----------
+   Kept intact purely as a rollback. To revert Browse to Power BI, change the
+   router's 'browse' case back to pageBrowsePowerBI(). Nothing links here now. */
+function pageBrowsePowerBI(){
   return `
   <section class="avail-hero">
     <div class="wrap" style="position:relative;padding:48px 0 10px">
@@ -1139,8 +1141,9 @@ async function loadEquip(force){
     eqNote=(d.source==='sample'||d.source==='sample-fallback')?'snapshot':(d.stale?'stale':'');
   }catch(e){ EQ_LIVE=[]; eqNote='error'; }
   eqLoading=false;
+  injectProductLD();
   const h=location.hash||'';
-  if(h.indexOf('#/browse-new')===0) refreshEqInner();
+  if(h.indexOf('#/browse')===0) refreshEqInner();
   else if(h.indexOf('#/item/')===0) view.innerHTML=pageItem(decodeURIComponent(h.split('/')[2]||''));
 }
 function eqFind(item){ return (EQ_LIVE||[]).find(function(e){return e.item===item;}); }
@@ -1298,7 +1301,9 @@ function eqSetQ(v){
   eqQTimer=setTimeout(function(){ eqQTimer=null; refreshEqInner(); }, 220);
 }
 
-function pageBrowseNew(){
+/* Browse Equipment — the live card listings, fed from the SharePoint master.
+   This is what #/browse serves as of the 4 Aug 2026 cutover. */
+function pageBrowse(){
   if(EQ_LIVE===null) setTimeout(loadEquip,0);
   return `
   <section class="avail-hero">
@@ -2101,8 +2106,8 @@ function router(){
   switch(route){
     case 'home': view.innerHTML=pageHome(); setActiveNav('home'); break;
     case 'browse': view.innerHTML=pageBrowse(); setActiveNav('browse'); break;
-    /* Hidden preview of the new card-based listings (not linked in the nav) */
-    case 'browse-new': view.innerHTML=pageBrowseNew(); setActiveNav('browse'); break;
+    /* Kept so bookmarks and links shared during the review still work */
+    case 'browse-new': view.innerHTML=pageBrowse(); setActiveNav('browse'); break;
     case 'item': view.innerHTML=pageItem(decodeURIComponent(parts[1]||'')); setActiveNav('browse'); break;
     case 'equipment': view.innerHTML=pageDetail(parts[1]); setActiveNav('browse'); break;
     case 'list': view.innerHTML=pageList(); setActiveNav(''); renderList(); break;
@@ -2114,17 +2119,33 @@ function router(){
   }
 }
 /* ---------- Inject Product structured data (search & AI discovery) ---------- */
+/* Structured data for search engines and AI answers, built from the REAL
+   listings once the feed has loaded. Prices are free text in the sheet
+   ("£780,000.00", "6.000.000,00 USD") and most items are POA, so no price is
+   published rather than guessing a figure — describing stock accurately matters
+   more than filling every field. */
 function injectProductLD(){
-  const list=EQUIP.slice(0,24).map((e,i)=>({
-    "@type":"ListItem","position":i+1,
-    "item":{"@type":"Product","name":e.name,"category":e.cat,
-      "itemCondition":e.cond==='New Surplus'?"https://schema.org/NewCondition":"https://schema.org/UsedCondition",
-      "offers":{"@type":"Offer","price":e.price,"priceCurrency":"USD","availability":"https://schema.org/InStock"}}
-  }));
-  const data={"@context":"https://schema.org","@type":"ItemList","name":"3R Oilfield Equipment — Asset Availability","numberOfItems":list.length,"itemListElement":list};
-  const s=document.createElement('script');s.type='application/ld+json';s.text=JSON.stringify(data);document.head.appendChild(s);
+  if(!Array.isArray(EQ_LIVE) || !EQ_LIVE.length) return;
+  const old=document.getElementById('ld-equipment');
+  if(old) old.remove();
+  const cond=function(c){
+    c=(c||'').toLowerCase();
+    if(c.indexOf('new')>=0) return 'https://schema.org/NewCondition';
+    if(c.indexOf('refurb')>=0) return 'https://schema.org/RefurbishedCondition';
+    return 'https://schema.org/UsedCondition';
+  };
+  const list=EQ_LIVE.slice(0,50).map(function(e,i){
+    const item={"@type":"Product","name":e.name,"sku":e.item,"category":e.cat+(e.sub?' / '+e.sub:''),"itemCondition":cond(e.cond)};
+    if(e.oem && e.oem.toUpperCase()!=='TBC') item.brand={"@type":"Brand","name":e.oem};
+    return {"@type":"ListItem","position":i+1,"item":item};
+  });
+  const data={"@context":"https://schema.org","@type":"ItemList",
+    "name":"3R Oilfield Equipment — Asset Availability",
+    "numberOfItems":EQ_LIVE.length,"itemListElement":list};
+  const s=document.createElement('script');
+  s.type='application/ld+json'; s.id='ld-equipment';
+  s.text=JSON.stringify(data); document.head.appendChild(s);
 }
-injectProductLD();
 /* ---------- Tool Pool auth: invite-only, via Netlify Identity (GoTrue) API ---------- */
 const TP_API='/.netlify/identity';
 const TP_KEY='3r_tp_session';

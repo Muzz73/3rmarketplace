@@ -2272,6 +2272,12 @@ function initInstallHint(){
 initTawk();
 router();
 initAuth();
+/* Load the equipment feed on every page, not just Browse. Two reasons: search
+   engines and AI crawlers usually only fetch the homepage of a hash-routed app,
+   and the listing structured data is built from this feed — so without it the
+   homepage would carry none. It also means Browse opens instantly. Deferred so
+   it never competes with the first paint. */
+setTimeout(function(){ if(EQ_LIVE===null) loadEquip(); }, 1200);
 /* Register service worker so the site is installable as an app (PWA) */
 if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); }
 setTimeout(initInstallHint, 2800);

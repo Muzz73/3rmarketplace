@@ -334,15 +334,6 @@
   select.filter:focus{border-color:var(--green)}
   .result-count{font-size:13.5px;color:var(--muted);margin:10px 0 22px}
 
-  /* --- World map (Contact ▸ Locations) --- */
-  .worldmap{position:relative;width:100%;border:1px solid var(--border);border-radius:14px;background:radial-gradient(120% 120% at 70% 10%,rgba(83,175,59,.10),transparent 60%),#12150f;overflow:hidden;margin:0 0 18px}
-  .worldmap svg{display:block;width:100%;height:auto}
-  .mappin{position:absolute;transform:translate(-50%,-50%);background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
-  .mp-dot{width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(83,175,59,.28),0 0 12px rgba(83,175,59,.7);transition:.18s}
-  .mappin:hover .mp-dot,.mappin:focus-visible .mp-dot{transform:scale(1.25);box-shadow:0 0 0 7px rgba(83,175,59,.22),0 0 16px rgba(83,175,59,.9)}
-  .mp-lbl{font-size:10.5px;font-weight:800;letter-spacing:.04em;color:var(--text);background:rgba(0,0,0,.6);border:1px solid var(--border);padding:2px 7px;border-radius:20px;white-space:nowrap;backdrop-filter:blur(3px)}
-  @media(max-width:520px){.mp-lbl{display:none}}
-
   /* --- New card listings (hidden preview route #/browse-new) --- */
   .eq-chips{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 4px}
   .eq-chips .chip{padding:8px 14px;border-radius:30px;background:var(--card);border:1px solid var(--border);font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
@@ -885,40 +876,13 @@ function equipCard(e){
   </div>`;
 }
 
-/* ---------- Offices + world map ----------
-   Offices drive both the map markers and the list below it, so adding or
-   removing a location is a one-line change here. x/y are percentages across
-   the map graphic (0,0 = top-left). */
+/* ---------- Offices ----------
+   Drives the Locations list on the Contact page and the footer line, so adding
+   or removing a location is a one-line change here. */
 const OFFICES=[
-  {city:'Montrose, UK',   role:'Global HQ',    x:48.6, y:23.5},
-  {city:'Macaé, Brazil',  role:'South America',x:33.2, y:66.5}
+  {city:'Montrose, UK',  role:'Global HQ'},
+  {city:'Macaé, Brazil', role:'South America'}
 ];
-function worldMap(){
-  const pins=OFFICES.map(function(o,i){
-    return '<button class="mappin" style="left:'+o.x+'%;top:'+o.y+'%" '
-      +'onclick="mapPick('+i+')" aria-label="'+poolAttr(o.city)+'">'
-      +'<span class="mp-dot"></span><span class="mp-lbl">'+poolEsc(o.city)+'</span></button>';
-  }).join('');
-  return '<div class="worldmap" id="worldmap">'
-    + '<svg viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
-    + '<path fill="#232a22" stroke="#3a4438" stroke-width="1" d="'
-    /* Simplified continental outlines — decorative, not survey-accurate. */
-    + 'M148 96 105 118 96 150 128 168 176 154 214 178 246 156 292 150 300 118 262 92 208 82Z'
-    + 'M196 200 178 236 208 268 224 316 258 356 292 330 306 286 282 246 248 214Z'
-    + 'M330 322 316 372 338 424 372 452 404 428 418 372 396 330 362 312Z'
-    + 'M470 108 452 138 466 166 496 178 524 160 552 170 578 148 566 116 528 98 494 92Z'
-    + 'M486 196 470 232 486 276 512 318 540 372 574 404 606 368 620 306 598 262 566 222 528 198Z'
-    + 'M640 118 622 150 640 186 686 208 742 196 796 210 848 190 872 152 846 118 776 100 706 96Z'
-    + 'M712 236 700 272 726 300 764 292 782 258 758 232Z'
-    + 'M846 356 828 392 856 420 902 414 926 380 900 350Z'
-    + '"/></svg>'
-    + pins
-    + '</div>';
-}
-function mapPick(i){
-  const o=OFFICES[i]; if(!o) return;
-  toast(o.city, o.role+' — '+CONTACT_EMAIL);
-}
 
 /* ---------- Stylised rig illustration ---------- */
 function rigSVG(){return `
@@ -2042,7 +2006,6 @@ function pageContact(){
     </div>
     <div>
       <h3 style="margin-bottom:10px">Locations</h3>
-      ${worldMap()}
       ${OFFICES.map(o=>`<div class="office"><div class="oi">${ic('pin')}</div><div><b>${o.city}</b><p>${o.role}</p></div></div>`).join('')}
       <div class="panel" style="margin-top:22px">
         <h4 style="margin-bottom:6px">General enquiries</h4>

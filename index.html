@@ -363,8 +363,10 @@
   ul.eq-dl li{color:var(--muted);font-size:14px;line-height:1.55;margin:3px 0}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:.2s;cursor:pointer;display:flex;flex-direction:column}
-  .card:hover{border-color:var(--green-dark);transform:translateY(-5px);box-shadow:var(--shadow)}
+  /* Resting border is a softened green so each card reads as its own panel;
+     hover goes to full green + lift so the click affordance still registers. */
+  .card{background:var(--card);border:1px solid rgba(83,175,59,.42);border-radius:var(--radius);overflow:hidden;transition:.2s;cursor:pointer;display:flex;flex-direction:column}
+  .card:hover{border-color:var(--green);transform:translateY(-5px);box-shadow:var(--shadow)}
   .card .ph{height:158px;position:relative;display:flex;align-items:center;justify-content:center}
   .card .ph svg.icon{width:54px;height:54px;color:rgba(255,255,255,.92);opacity:.95}
   .card .ph .cat-label{position:absolute;left:12px;bottom:12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.32);padding:5px 10px;border-radius:30px;backdrop-filter:blur(4px)}

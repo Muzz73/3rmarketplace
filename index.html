@@ -1238,11 +1238,31 @@ function eqGridInner(){
     :'<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">No equipment matches those filters.</div>';
   return chips+tools+count+'<div class="grid">'+cards+'</div>';
 }
-function refreshEqInner(){ const el=document.getElementById('eq-inner'); if(el) el.innerHTML=eqGridInner(); }
+/* Re-rendering the block replaces the search box, which would drop focus after
+   every keystroke — so remember where the cursor was and put it back. */
+function refreshEqInner(){
+  const el=document.getElementById('eq-inner');
+  if(!el) return;
+  const active=document.activeElement;
+  const inSearch=!!(active && active.id==='eqq');
+  const caret=inSearch ? active.selectionStart : 0;
+  el.innerHTML=eqGridInner();
+  if(inSearch){
+    const box=document.getElementById('eqq');
+    if(box){ box.focus(); try{ box.setSelectionRange(caret,caret); }catch(e){} }
+  }
+}
 function eqSetCat(c){ eqState.cat=c; eqState.sub='All'; refreshEqInner(); }
 function eqSetSub(v){ eqState.sub=v; refreshEqInner(); }
 function eqSetCond(v){ eqState.cond=v; refreshEqInner(); }
-function eqSetQ(v){ eqState.q=v; refreshEqInner(); }
+/* Typing updates the state at once but waits for a short pause before redrawing,
+   so a long word doesn't trigger a full re-render of the grid on every letter. */
+let eqQTimer=null;
+function eqSetQ(v){
+  eqState.q=v;
+  if(eqQTimer) clearTimeout(eqQTimer);
+  eqQTimer=setTimeout(function(){ eqQTimer=null; refreshEqInner(); }, 220);
+}
 
 function pageBrowseNew(){
   if(EQ_LIVE===null) setTimeout(loadEquip,0);

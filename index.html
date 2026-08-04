@@ -1188,18 +1188,40 @@ function eqGridInner(){
   /* "Wells/Completions" was renamed to "Wells" (3 Aug 2026); the old name is kept
      in the order list so any row still carrying it also gets a chip in the right place. */
   const ORDER=['Subsea','Marine','Platform','Drilling','Wells','Wells/Completions','Capital Equipment'];
-  const counts={}; EQ_LIVE.forEach(function(e){ if(e.cat) counts[e.cat]=(counts[e.cat]||0)+1; });
-  const known=ORDER.filter(function(c){return counts[c];});
+
+  /* Faceted counts: each filter's numbers reflect the OTHER active filters, so
+     picking Subsea ▸ Connector shows "Good (1)", not the whole-list total.
+     Each facet ignores only itself, otherwise choosing a value would
+     immediately hide every alternative. */
+  const q0=eqState.q.trim().toLowerCase();
+  const hit=function(e){ return !q0 || (e.item+' '+e.name+' '+e.oem+' '+e.sub+' '+e.details).toLowerCase().indexOf(q0)>=0; };
+  const okCat=function(e){ return eqState.cat==='All'||e.cat===eqState.cat; };
+  const okSub=function(e){ return eqState.sub==='All'||e.sub===eqState.sub; };
+  const okCond=function(e){ return eqState.cond==='All'||e.cond===eqState.cond; };
+
+  const subs={}, conds={};
+  EQ_LIVE.forEach(function(e){
+    if(e.sub  && okCat(e) && okCond(e) && hit(e)) subs[e.sub]=(subs[e.sub]||0)+1;
+    if(e.cond && okCat(e) && okSub(e)  && hit(e)) conds[e.cond]=(conds[e.cond]||0)+1;
+  });
+  /* Keep a chosen value listed even when it now matches nothing, so the box
+     still shows what's selected rather than silently reading "All". */
+  if(eqState.sub!=='All'  && subs[eqState.sub]===undefined)   subs[eqState.sub]=0;
+  if(eqState.cond!=='All' && conds[eqState.cond]===undefined) conds[eqState.cond]=0;
+  /* Category counts reflect condition + search (but not the chosen category,
+     nor sub-category, which only makes sense within a category). */
+  const counts={}; let allCount=0;
+  EQ_LIVE.forEach(function(e){
+    if(okCond(e) && hit(e)){ allCount++; if(e.cat) counts[e.cat]=(counts[e.cat]||0)+1; }
+  });
+  if(eqState.cat!=='All' && counts[eqState.cat]===undefined) counts[eqState.cat]=0;
+  const known=ORDER.filter(function(c){return counts[c]!==undefined;});
   const extra=Object.keys(counts).filter(function(c){return ORDER.indexOf(c)<0;}).sort();
-  const cats=['All'].concat(known, extra);
-  const chips='<div class="eq-chips">'+cats.filter(function(c){return c==='All'||counts[c];}).map(function(c){
-    const on=eqState.cat===c, n=c==='All'?EQ_LIVE.length:counts[c];
+  const chips='<div class="eq-chips">'+['All'].concat(known,extra).map(function(c){
+    const on=eqState.cat===c, n=(c==='All'?allCount:counts[c]);
     return '<button class="chip'+(on?' on':'')+'" onclick="eqSetCat(\''+poolJs(c)+'\')">'+poolEsc(c)+' <span>'+n+'</span></button>';
   }).join('')+'</div>';
 
-  const inCat=EQ_LIVE.filter(function(e){return eqState.cat==='All'||e.cat===eqState.cat;});
-  const subs={}; inCat.forEach(function(e){ if(e.sub) subs[e.sub]=(subs[e.sub]||0)+1; });
-  const conds={}; EQ_LIVE.forEach(function(e){ if(e.cond) conds[e.cond]=(conds[e.cond]||0)+1; });
   const opt=function(map,cur,label){
     return '<option value="All">'+label+'</option>'+Object.keys(map).sort().map(function(k){
       return '<option value="'+poolAttr(k)+'"'+(cur===k?' selected':'')+'>'+poolEsc(k)+' ('+map[k]+')</option>';}).join('');
@@ -1210,13 +1232,7 @@ function eqGridInner(){
     +'<select class="filter" onchange="eqSetCond(this.value)">'+opt(conds,eqState.cond,'All conditions')+'</select>'
     +'</div>';
 
-  const q=eqState.q.trim().toLowerCase();
-  const list=inCat.filter(function(e){
-    if(eqState.sub!=='All'&&e.sub!==eqState.sub) return false;
-    if(eqState.cond!=='All'&&e.cond!==eqState.cond) return false;
-    if(q && (e.item+' '+e.name+' '+e.oem+' '+e.sub+' '+e.details).toLowerCase().indexOf(q)<0) return false;
-    return true;
-  });
+  const list=EQ_LIVE.filter(function(e){ return okCat(e)&&okSub(e)&&okCond(e)&&hit(e); });
   const count='<div class="result-count">'+list.length+' of '+EQ_LIVE.length+' items shown</div>';
   const cards=list.length?list.map(eqCard).join('')
     :'<div class="empty" style="grid-column:1/-1;color:var(--muted);padding:30px 0">No equipment matches those filters.</div>';
